@@ -37,20 +37,36 @@ data Declaration
     deriving (Eq, Show)
 
 data Domain = Range Int Int
+    | FiniteSet [Int]
     deriving (Eq, Show)
 
 data Expr
     = IntLit Int
     | Var Identifier
+    | Neg Expr
+    | Add Expr Expr
+    | Sub Expr Expr
+    | Mul Expr Expr
+    | Div Expr Expr
+    | Pow Expr Expr
+    | MacroExpr MacroName [Expr]
     deriving (Eq, Show)
 
-data CompareOperator = OpEq
+data CompareOperator = OpEq | OpNeq | OpLt | OpLte | OpGt | OpGte
     deriving (Eq, Show)
 
 data Constraint = Compare CompareOperator Expr Expr
+    | All [Constraint]
+    | Any [Constraint]
+    | AllDifferent [Expr]
+    deriving (Eq, Show)
+
+data MacroName = Sum | Min | Max
     deriving (Eq, Show)
 
 data SolverGoal = Satisfy
+    | Maximize Expr
+    | Minimize Expr
     deriving (Eq, Show)
 
 --------------------------------------------------------------------------------
