@@ -16,14 +16,14 @@ const modelInput = document.getElementById(
 ) as HTMLTextAreaElement;
 
 const runButton = document.getElementById("run-model")!;
-
 const saveButton = document.getElementById("save-model")!;
-
 const outputEl = document.getElementById("model-output") as HTMLOutputElement;
 
+// (AI-Assisted) Part C: Added save: false to match the State type
 const initialState: State = {
     model: "",
     run: false,
+    save: false,
 };
 
 const initialOutput: Output = {
@@ -31,6 +31,7 @@ const initialOutput: Output = {
     error: "",
 };
 
+// (AI-Assisted) Part C: Reset both run and save flags when user types
 const modelInput$: Observable<Action<State>> = fromEvent(
     modelInput,
     "input",
@@ -40,17 +41,20 @@ const modelInput$: Observable<Action<State>> = fromEvent(
         ...state,
         model: value,
         run: false,
+        save: false,
     })),
 );
 
+// (AI-Assisted) Part C: Trigger run and explicitly clear the save flag
 const run$: Observable<Action<State>> = fromEvent(runButton, "click").pipe(
     map(() => state => ({
         ...state,
         run: true,
+        save: false,
     })),
 );
 
-// observable stream triggered when Save is clicked
+// (AI-Assisted) Part C: Observable stream triggered when Save is clicked
 const save$: Observable<Action<State>> = fromEvent(saveButton, "click").pipe(
     map(() => state => ({
         ...state,
@@ -59,41 +63,13 @@ const save$: Observable<Action<State>> = fromEvent(saveButton, "click").pipe(
     })),
 );
 
-// send model and whether save was requested to backend
+// (AI-Assisted) Part C: Send model and whether save was requested to backend
 function getOutput(state: State): Observable<Action<Output>> {
     const body = new URLSearchParams();
     body.set("model", state.model);
-    if (state.save) {
-        body.set("save", "true");
-    }
-
-    return fromFetch<Readonly<{ result: string } | { error: string }>>(
-        "/api/minizinc",
-        {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/x-www-form-urlencoded",
-            },
-            body: body.toString(),
-            selector: res => res.json(),
-        },
-    ).pipe(
-        map(res => {
-            if ("error" in res) {
-                return () => ({ result: "", error: res.error });
-            }
-            return () => ({ result: JSON.stringify(res), error: "" });
-        }),
-    );
-}
-
-function getOutput(state: State): Observable<Action<Output>> {
-    const body = new URLSearchParams();
-    body.set("model", state.model);
-    // (AI-Assisted) Part C: Signal to Haskell whether to save the solution
     body.set("save", state.save ? "true" : "false");
 
-    return fromFetch<Readonly<{ result: string } | { error: string }>>(
+    return fromFetch<Readonly<Record<string, string>>>(
         "/api/minizinc",
         {
             method: "POST",
@@ -108,18 +84,21 @@ function getOutput(state: State): Observable<Action<Output>> {
             if ("error" in res) {
                 return () => ({ result: "", error: res.error });
             }
-            return () => ({ result: JSON.stringify(res), error: "" });
+            // Pretty-print JSON formatted across multiple lines
+            return () => ({ result: JSON.stringify(res, null, 2), error: "" });
         }),
     );
 }
 
 function main() {
+    // Merge all user input streams into the single state pipeline
     const state$ = merge(modelInput$, run$, save$).pipe(
         scan((state, action) => action(state), initialState),
         startWith(initialState),
     );
     state$.subscribe(console.log);
 
+    // Only make an API call when run or save is active
     const output$ = state$.pipe(
         filter(state => state.run || state.save),
         switchMap(getOutput),
