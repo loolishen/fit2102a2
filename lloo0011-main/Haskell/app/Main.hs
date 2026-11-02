@@ -5,7 +5,7 @@
 -- model, parses and solves it, and returns the resulting assignment.
 module Main (main) where
 
-import Assignment (miniZincParser, solveProblem)
+import Assignment (getTime, miniZincParser, solveProblem)
 import Control.Arrow (second)
 import Control.Concurrent.QSemN (newQSemN)
 import Control.Monad.IO.Class (liftIO)
@@ -22,6 +22,19 @@ jsonResponse pairs =
         object
             [ fromString key .= (pack value :: Text) | (key, value) <- pairs
             ]
+
+-- | (AI-Assisted) Part C: Format and write the solution to an output file
+--   following the specification: "solution_<currentTime>.out".
+saveSolutionToFile :: [(String, Int)] -> IO String
+saveSolutionToFile env = do
+    timeStr <- getTime
+    let fileName = "solution_" ++ timeStr ++ ".out"
+        header   = "-- Generated: " ++ timeStr ++ "\n"
+        body     =
+            concatMap (\(var, val) -> var ++ " = " ++ show val ++ ";\n") env
+        content  = header ++ body
+    writeFile fileName content
+    pure fileName
 
 -- --------------------------------------------------------------------------------
 -- | Entry point – launches Scotty web server and defines API routes
